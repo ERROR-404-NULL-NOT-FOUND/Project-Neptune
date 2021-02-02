@@ -1,10 +1,6 @@
 import discord
 import random
 import datetime
-'''
-import youtube_dl
-import os
-'''
 from discord.ext import commands
 
 intents = discord.Intents.all()
