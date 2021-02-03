@@ -1,1 +1,1 @@
-worker: pythonProject main.py
+worker: Project Neptune/main.py
