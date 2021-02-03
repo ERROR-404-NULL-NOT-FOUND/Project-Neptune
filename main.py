@@ -1,12 +1,12 @@
 import discord
 import random
 import datetime
+import os
 from discord.ext import commands
 
 intents = discord.Intents.all()
 intents.members = True
-token_file = open("token.tk")
-token = token_file.read()
+token = os.getenv("DISCORD_BOT_TOKEN")
 prefix = ['ERROR ', 'error ']
 client = commands.Bot(command_prefix=prefix, intents=intents)
 client.remove_command('help')
@@ -50,6 +50,7 @@ async def verify(ctx):
         code += str(characters[random.randint(0, len(characters)-1)])
     embed = discord.Embed(title="User verification for"+ctx.guild.name, description="""Please send the following code to verify that you are not a bot:\n
      `"""+code+"`")
+    embed.set_footer(text=str(ctx.author) + ' at ' + str(datetime.datetime.now())[:16], icon_url=ctx.author.avatar_url)
     await ctx.send(embed=embed)
     response = await client.wait_for('message')
     while response.author != ctx.author:
@@ -59,13 +60,6 @@ async def verify(ctx):
         await ctx.send("Verified!")
     else:
         await ctx.send("You have failed the captcha, you are now slightly more bot")
-
-
-'''client.command()
-async def destroy_server(ctx):
-    channel=await ctx.guild.get_channel("General")
-
-'''
 
 
 @client.command(description="Prints almost all guild data available to the bot")
@@ -104,7 +98,7 @@ async def ban(ctx, member: discord.Member, reason1=None):
     if not member.id == 716469153812447233:
         print("banning user"+member.display_name)
         await ctx.guild.ban(member, reason=reason1)
-        print(member.display_name+"BANNED")
+        print(member.display_name+" BANNED")
         await ctx.send("User "+str(member)+" banned!")
     else:
         await ctx.send("Nope. Not banning ERROR")
@@ -137,7 +131,7 @@ async def archive(ctx):
     archived.close()
 
 
-@client.command(description="Lowers all letters in the message to the lowers")
+@client.command(description="Lowers all letters in the message to the lowercase")
 async def to_lower(ctx, message):
     await ctx.send(message.lower())
 
@@ -152,6 +146,8 @@ async def archive_list(ctx):
     archived = open("archived.txt", "r")
     embed = discord.Embed(title="Archived messages", description=str(archived.read()))
     await ctx.send(embed=embed)
+
+
 
 
 @client.command(description="Lists almost all of the attributes of that user available to the bot")
@@ -189,6 +185,11 @@ async def user(ctx, member: discord.Member = None):
     await ctx.send(embed=embed)
 
 
+@client.command("for ERROR only")
+async def disable_all(ctx):
+    if ctx.author.id == 716469153812447233:
+        exit(0)
+
 @client.command(description="Lists all of the servers the bot is in")
 async def list_servers(ctx):
     message = ''
@@ -202,54 +203,9 @@ async def list_servers(ctx):
 
 @client.command(description="Deletes specified amount of messages")
 @commands.has_guild_permissions(manage_messages=True)
-async def clear(ctx, amount):
-
+async def clear(ctx, amount: int):
     await ctx.channel.purge(limit=int(amount+1))
 
-'''
-@client.command(description="Disconnects the bot from the channel to which it is currently connected")
-async def leave(ctx):
-    voice = ctx.voice_client
-    await voice.disconnect()
-
-
-@client.command(description="Plays the specified(youtube) link in the vc that the author is currently in")
-async def play(ctx, url: str):
-    song_there = os.path.isfile("song.mp3")
-    try:
-        if song_there:
-            os.remove("song.mp3")
-    except PermissionError:
-        await ctx.send("Wait for the current playing music to end or use the 'stop' command")
-        return
-
-    name_of_channel = ctx.author.voice.channel
-    if name_of_channel is not None:
-        await name_of_channel.connect()
-    else:
-        await ctx.send("You are not currently connected to a voice channel!")
-        return
-    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
-
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }],
-    }
-    embed = discord.Embed(title="Downloading song...")
-    await ctx.send(embed=embed)
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
-    embed = discord.Embed(title="Finished downloading!")
-    await ctx.send(embed=embed)
-    for file in os.listdir("./"):
-        if file.endswith(".mp3"):
-            os.rename(file, "song.mp3")
-    voice.play(discord.FFmpegPCMAudio(source="song.mp3"))
-'''
 
 @client.command(pass_context=True, description="Displays this message")
 async def help(ctx):
@@ -258,30 +214,6 @@ async def help(ctx):
     for i in client.commands:
         embed.add_field(name=i.name, value='```'+str(i.description)+'.```', inline=True)
     await ctx.send(embed=embed)
-
-
-@client.command(description="Pauses the music the bot is currently playing")
-async def pause(ctx):
-    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
-    if voice.is_playing():
-        voice.pause()
-    else:
-        await ctx.send("No audio is playing!")
-
-
-@client.command(description="Resumes the music that the bot was playing before the 'pause' command was executed")
-async def resume(ctx):
-    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
-    if voice.is_paused():
-        voice.resume()
-    else:
-        await ctx.send("Audio is not paused!")
-
-
-@client.command(description="Stops the music")
-async def stop(ctx):
-    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
-    voice.stop()
 
 
 @client.command(description="Mutes the specified(Warning: does not work)")
