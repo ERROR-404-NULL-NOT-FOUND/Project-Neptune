@@ -1,17 +1,21 @@
 import discord
 import random
 import datetime
-import os
+import json
 from discord.ext import commands
+from discord_slash import SlashCommand
 
 intents = discord.Intents.all()
 intents.members = True
-token = os.getenv("DISCORD_BOT_TOKEN")
+tokenFile = open('token.tk', 'r')
+token = tokenFile.read()
 prefix = ['ERROR ', 'error ']
 client = commands.Bot(command_prefix=prefix, intents=intents)
+slash = SlashCommand(client, sync_commands=True)
 client.remove_command('help')
 openChannel = 0
-
+guild_ids = [739204995433496656, 771497539748233257, 729649553648910398, 788789142343122945]
+print(guild_ids)
 
 @client.event
 async def on_command_error(ctx, error):
@@ -22,8 +26,8 @@ async def on_command_error(ctx, error):
 @client.event
 async def on_ready():
     print('Bot is ready')
-    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching,
-                                                           name="Req make poor choices"))
+    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing,
+                                                           name="Made by ERROR"))
 
 
 @client.command()
@@ -37,7 +41,7 @@ async def remove_reactions(ctx, message):
 async def ping(ctx):
     embed = discord.Embed(title="Pong!")
     message = await ctx.send(embed=embed)
-    embed.description = f'{int(client.latency*1000)} Milliseconds'
+    embed.description = f'{int(client.latency * 1000)} Milliseconds'
     await message.edit(embed=embed)
 
 
@@ -47,9 +51,9 @@ async def verify(ctx):
     characters = 'abcdefghijklmnopqrstuvwxyz _/?=,\\.[]{}-_=+;:\'"><'
     code = ''
     for i in range(20):
-        code += str(characters[random.randint(0, len(characters)-1)])
-    embed = discord.Embed(title="User verification for"+ctx.guild.name, description="""Please send the following code to verify that you are not a bot:\n
-     `"""+code+"`")
+        code += str(characters[random.randint(0, len(characters) - 1)])
+    embed = discord.Embed(title="User verification for" + ctx.guild.name, description="""Please send the following code to verify that you are not a bot:\n
+     `""" + code + "`")
     embed.set_footer(text=str(ctx.author) + ' at ' + str(datetime.datetime.now())[:16], icon_url=ctx.author.avatar_url)
     await ctx.send(embed=embed)
     response = await client.wait_for('message')
@@ -62,7 +66,7 @@ async def verify(ctx):
         await ctx.send("You have failed the captcha, you are now slightly more bot")
 
 
-@client.command(description="Prints almost all guild data available to the bot")
+@slash.slash(name='guildInfo', guild_ids=guild_ids)
 async def guild_info(ctx):
     embed = discord.Embed(title=f'Stats for {ctx.guild.name}')
     embed.set_thumbnail(url=ctx.guild.icon_url)
@@ -96,10 +100,10 @@ async def delete_role(ctx, role_name: discord.Role):
 async def ban(ctx, member: discord.Member, reason1=None):
     print("ban command activated")
     if not member.id == 716469153812447233:
-        print("banning user"+member.display_name)
+        print("banning user" + member.display_name)
         await ctx.guild.ban(member, reason=reason1)
-        print(member.display_name+" BANNED")
-        await ctx.send("User "+str(member)+" banned!")
+        print(member.display_name + " BANNED")
+        await ctx.send("User " + str(member) + " banned!")
     else:
         await ctx.send("Nope. Not banning ERROR")
 
@@ -119,7 +123,7 @@ async def unlock(ctx, channel: discord.TextChannel):
 @client.command(description="Kicks the specified user from the guild")
 async def kick(ctx, member: discord.Member, reason=None):
     await ctx.guild.kick(member, reason=reason)
-    await ctx.send("Kicked "+str(member)+"!")
+    await ctx.send("Kicked " + str(member) + "!")
 
 
 @client.command(description="Saves the above message(warning: saves the message executing the command instead)")
@@ -127,7 +131,7 @@ async def archive(ctx):
     archived = open("archived.txt", 'a')
     message_to_archive = ctx.channel.history(limit=1).flatten
     archived.write(f'\n{message_to_archive}\n')
-    await ctx.send("Archived message: `"+message_to_archive+'`!')
+    await ctx.send("Archived message: `" + message_to_archive + '`!')
     archived.close()
 
 
@@ -148,10 +152,8 @@ async def archive_list(ctx):
     await ctx.send(embed=embed)
 
 
-
-
-@client.command(description="Lists almost all of the attributes of that user available to the bot")
-async def user(ctx, member: discord.Member = None):
+@slash.slash(name="user", guild_ids=guild_ids)
+async def _user(ctx, member: discord.Member = None):
     if member is None:
         member = ctx.author
     embed = discord.Embed(title=member.name, color=member.color)
@@ -181,7 +183,7 @@ async def user(ctx, member: discord.Member = None):
         if not i == 0:
             message += f'<@&{member.roles[i].id}>\n'
     embed.add_field(name='Roles', value=message, inline=True)
-    embed.set_footer(text=str(ctx.author)+' at '+str(datetime.datetime.now())[:16], icon_url=ctx.author.avatar_url)
+    embed.set_footer(text=str(ctx.author) + ' at ' + str(datetime.datetime.now())[:16], icon_url=ctx.author.avatar_url)
     await ctx.send(embed=embed)
 
 
@@ -190,13 +192,14 @@ async def disable_all(ctx):
     if ctx.author.id == 716469153812447233:
         exit(0)
 
+
 @client.command(description="Lists all of the servers the bot is in")
 async def list_servers(ctx):
     message = ''
     if ctx.author.id == 716469153812447233:
         for i in range(len(client.guilds)):
             message += str(client.guilds[i]) + "\n"
-        embed = discord.Embed(title="Servers that Project Neptune is in", description="Guilds: "+str(client.guilds))
+        embed = discord.Embed(title="Servers that Project Neptune is in", description="Guilds: " + str(client.guilds))
         embed.add_field(name='Guilds', value=message, inline=False)
         await ctx.send(embed=embed)
 
@@ -204,7 +207,7 @@ async def list_servers(ctx):
 @client.command(description="Deletes specified amount of messages")
 @commands.has_guild_permissions(manage_messages=True)
 async def clear(ctx, amount: int):
-    await ctx.channel.purge(limit=int(amount+1))
+    await ctx.channel.purge(limit=int(amount + 1))
 
 
 @client.command(pass_context=True, description="Displays this message")
@@ -212,7 +215,7 @@ async def help(ctx):
     embed = discord.Embed(color=discord.Colour.red())
     embed.set_author(name="Help")
     for i in client.commands:
-        embed.add_field(name=i.name, value='```'+str(i.description)+'.```', inline=True)
+        embed.add_field(name=i.name, value='```' + str(i.description) + '.```', inline=True)
     await ctx.send(embed=embed)
 
 
@@ -229,7 +232,7 @@ async def mute(ctx, member: discord.Member = None, *, reason=None):
                 colour=discord.Colour.blurple()
             )
             embed.add_field(name='Reason :', value=f'{reason}', inline=True)
-            embed.set_thumbnail(url='')   # u can put a thumbnail if u want
+            embed.set_thumbnail(url='')  # u can put a thumbnail if u want
 
             embed.add_field(name='Muted by :', value=f'{ctx.author.mention}')
             await ctx.send(embed=embed)
@@ -286,7 +289,6 @@ async def embed_long(ctx):
     input1 = await client.wait_for('message')
     create_field = str(input1.content).lower() == 'yes'
     while create_field:
-
         await ctx.send('what do you want the name to be?')
         name = await client.wait_for('message')
 
@@ -303,20 +305,17 @@ async def embed_long(ctx):
     await ctx.send(embed=embed)
 
 
-@client.command(description="Creates and sends an embed with a title and description specified by the user")
-async def embed_short(ctx):
-    info = str(ctx.message.content)[17:].split("|")
+@slash.slash(name='embedshort', guild_ids=guild_ids,description="Creates and sends an embed with a title and description specified by the user")
+async def _embedshort(ctx,*,args):
+    info = args.split("|")
     desc = info[1]
     title = info[0]
     embed = discord.Embed(description=desc, title=title, color=ctx.author.color)
-    msg = await ctx.channel.fetch_message(ctx.message.id)
-    await msg.delete()
     await ctx.send(embed=embed)
 
 
 @client.event
 async def on_message(message):
-
     if message.author == client.user:
         return
     log_channel = client.get_channel(795468867794763780)
@@ -350,6 +349,8 @@ async def on_message(message):
     embed.set_thumbnail(url=message.author.avatar_url)
     await log_channel.send(embed=embed)
     '''channelLast = int(message.channel)'''
-    
+
     await client.process_commands(message)
+
+
 client.run(token)
