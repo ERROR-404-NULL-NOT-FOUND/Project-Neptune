@@ -2,9 +2,18 @@ import discord
 import random
 import datetime
 import json
+import time
+
 import os
-#import time
-os.chdir(r'C:\Users\gigga.PAIGE\PycharmProjects\pythonProject')
+import discord
+import traceback
+import inspect
+import textwrap
+import io
+
+from discord.ext import commands
+from contextlib import redirect_stdout
+os.chdir(r'C:\Users\gigga.PAIGE\PycharmProjects\pythonProject\assets')
 
 intents = discord.Intents.all()
 intents.members = True
@@ -17,7 +26,7 @@ client = commands.Bot(command_prefix=prefix, intents=intents)
 slash = SlashCommand(client, sync_commands=True)
 client.remove_command('help')
 openChannel = 0
-guild_ids = [739204995433496656, 771497539748233257, 729649553648910398, 788789142343122945]
+guild_ids = [739204995433496656, 771497539748233257, 729649553648910398, 788789142343122945, 729184659002490910]
 print(guild_ids)
 
 
@@ -27,28 +36,138 @@ async def on_command_error(ctx, error):
     await ctx.send(error)
 
 
-'''@client.event
+'''client.event
 async def on_voice_state_update(member, before, after):
     print(f'{member} has joined the vc~!')
     with open('usersVC.json','r') as f:
             users = json.load(f)
-            id = member.id
-            if str(member.id) not in users:
-                users[str(member.id)] = {}
-                users[str(member.id)]['exp'] = 0
-                users[str(member.id)]['level'] = 1
-            while member.voice is not None:
-                await add_exp(users, member, 1)
-
+            if  not await search(users, member.display_name+member.discriminator):
+                users[str(member.display_name+member.discriminator)] = {}
+                users[str(member.display_name+member.discriminator)]['exp'] = 0
+                users[str(member.display_name+member.discriminator)]['level'] = 1
+                with open('usersVC.json', 'w') as w:
+                    json.dump(users, w)
+            while member.voice != None:
+                await add_exp(users, member, 5)
+                with open('usersVC.json', 'w') as w:
+                    json.dump(users, w)
                 time.sleep(60)
-    print(f'{member} left the vc!')
-    with open('usersVC.json','w') as w:
-        print(f'{member} left the vc!')
-        json.dump(users, w)'''
+    print(f'{member} left the vc!')'''
+
+@client.command(name="eval")  # Borrowed eval command. -R.Danny
+async def _eval(ctx, *, body):
+    if ctx.author.id == 716469153812447233:
+        env = {
+            "ctx": ctx,
+            "bot": client,
+            "channel": ctx.channel,
+            "author": ctx.author,
+            "guild": ctx.guild,
+            "message": ctx.message,
+            "source": inspect.getsource,
+        }
+
+        def cleanup_code(content):
+            """Automatically removes code blocks from the code."""
+            # remove ```py\n```
+            if content.startswith("```") and content.endswith("```"):
+                return "\n".join(content.split("\n")[1:-1])
+
+            # remove `foo`
+            return content.strip("` \n")
+
+        def get_syntax_error(e):
+            if e.text is None:
+                return f"```py\n{e.__class__.__name__}: {e}\n```"
+            return f'```py\n{e.text}{"^":>{e.offset}}\n{e.__class__.__name__}: {e}```'
+
+        env.update(globals())
+
+        body = cleanup_code(body)
+        stdout = io.StringIO()
+        err = out = None
+
+        to_compile = f'async def func():\n{textwrap.indent(body, "  ")}'
+
+        def paginate(text: str):
+            """Simple generator that paginates text."""
+            last = 0
+            pages = []
+            for curr in range(0, len(text)):
+                if curr % 1980 == 0:
+                    pages.append(text[last:curr])
+                    last = curr
+                    appd_index = curr
+            if appd_index != len(text) - 1:
+                pages.append(text[last:curr])
+            return list(filter(lambda a: a != "", pages))
+
+        try:
+            exec(to_compile, env)
+        except Exception as e:
+            err = await ctx.send(f"```py\n{e.__class__.__name__}: {e}\n```")
+            return await ctx.message.add_reaction("\u2049")
+
+        func = env["func"]
+        try:
+            with redirect_stdout(stdout):
+                ret = await func()
+        except Exception as e:
+            value = stdout.getvalue()
+            err = await ctx.send(f"```py\n{value}{traceback.format_exc()}\n```")
+        else:
+            value = stdout.getvalue()
+            if ret is None:
+                if value:
+                    try:
+
+                        out = await ctx.send(f"```py\n{value}\n```")
+                    except:
+                        paginated_text = paginate(value)
+                        for page in paginated_text:
+                            if page == paginated_text[-1]:
+                                out = await ctx.send(f"```py\n{page}\n```")
+                                break
+                            await ctx.send(f"```py\n{page}\n```")
+            else:
+                try:
+                    out = await ctx.send(f"```py\n{value}{ret}\n```")
+                except:
+                    paginated_text = paginate(f"{value}{ret}")
+                    for page in paginated_text:
+                        if page == paginated_text[-1]:
+                            out = await ctx.send(f"```py\n{page}\n```")
+                            break
+                        await ctx.send(f"```py\n{page}\n```")
+
+        if out:
+            await ctx.message.add_reaction("\u2705")  # tick
+        elif err:
+            await ctx.message.add_reaction("\u2049")  # x
+        else:
+            await ctx.message.add_reaction("\u2705")
+
 
 
 @client.event
 async def on_member_join(member):
+    path = r"C:\Users\gigga.PAIGE\PycharmProjects\pythonProject\assets"
+    os.chdir(r'C:\Users\gigga.PAIGE\PycharmProjects\pythonProject\assets')
+    founddir = False
+    if str(member.guild.id) in os.listdir(path):
+        os.chdir(r'C:\Users\gigga.PAIGE\PycharmProjects\pythonProject\assets\{}'.format(member.guild.id))
+        founddir = True
+    if not founddir:
+        os.mkdir(str(member.guild.id))
+        os.chdir(r'C:\Users\gigga.PAIGE\PycharmProjects\pythonProject\assets\{}'.format(member.guild.id))
+        open("usersText.json", "w+")
+        f = open("usersText.json", "w")
+        f.write('{}')
+        f.close()
+        open("levelallowed.txt", "w+")
+        f = open("usersText.json", "w")
+        f.write('True')
+        f.close()
     with open('usersText.json', 'r') as f:
         users = json.load(f)
         await update_data(users, member)
@@ -70,17 +189,34 @@ async def remove_reactions(ctx, message):
         await message.clear_reaction(r)
 
 
+@slash.slash(guild_ids=guild_ids)
+async def ttt(ctx):
+    emojis = {"checkmark": '<:checkmark:821783910270369842>', "plusign": "<:plussign:821783451412987964>"}
+    embed = discord.Embed(title=f'{ctx.author}\'s game of tic-tac-toe!', description=f'React with {emojis["plusign"]} to join!')
+    embed.add_field(name="1/2 members!",value="Current members: "+ctx.author.display_name)
+    message = await ctx.send(embed=embed)
+    await message.add_reaction(emojis['plusign'])
+    await message.add_reaction(emojis['checkmark'])
+    emoji, member = await client.wait_for('reaction_add')
+    while emoji.emoji.name != 'PlusSign' and member != client.user:
+        emoji, member = await client.wait_for('reaction_add')
+    await ctx.send(member.display_name)
+    embed.clear_fields()
+    embed2 = embed
+    embed2.add_field(name="2/2 members!",value="Current members: "+ctx.author.display_name+','+member.display_name)
+    embed2.description=f'{ctx.author.mention} react with {emojis["checkmark"]} to start the game!'
+    await message.edit(embed=None)
+
+
 @client.command(description="Returns the level of the given user(if none then it defaults to whoever sends the command")
-async def level(ctx, member: discord.member = None):
-    with open('levelAllowed.json', 'r') as f:
-        guilds = json.load(f)
-        if guilds[str(ctx.guild.id)]["allowed"] == False:
-            return
+async def level(ctx, member: discord.Member = None):
+    if open("levelallowed.txt",'r').read == "False":
+        return
     if member is None:
         member = ctx.author
     with open('usersText.json', 'r') as f:
         users = json.load(f)
-        percent = str(users[member.display_name + member.discriminator]["exp"] ** (1 / 4)).split('.')
+        percent = str(users[str(member.id)]["exp"] ** (1 / 4)).split('.')
         visual = ''
         percent = percent[1]
         acPercent = percent[0]+percent[1]
@@ -91,17 +227,32 @@ async def level(ctx, member: discord.member = None):
         for i in range(10-int(percent)):
             visual+='□'
         embed = discord.Embed(title=f'Data for {member.display_name}', description=visual+' '+acPercent+'%', color=member.color)
-        embed.add_field(name='EXP', value=str(users[member.display_name+member.discriminator]["exp"]), inline=True)
-        embed.add_field(name='Level', value=str(users[member.display_name+member.discriminator]["level"]), inline=True)
+        embed.add_field(name='EXP', value=str(users[str(member.id)]["exp"]), inline=True)
+        embed.add_field(name='Level', value=str(users[str(member.id)]["level"]), inline=True)
         await ctx.send(embed=embed)
 
 
 
 @client.command()
-async def toggleTextLevel(ctx, onoroff: bool):
+async def leaderboard(ctx):
     with open('levelAllowed.json', 'r') as f:
         guilds = json.load(f)
-        guilds[str(ctx.guild.id)]['allowed'] = onoroff
+        if guilds[str(ctx.guild.id)]["allowed"] == False:
+            return
+    with open('usersText.json', 'r') as f:
+        users = json.load(f)
+        leaderboard = {key: val for key, val in sorted(users.items(), key = lambda ele: ele[1])}
+        await ctx.send(leaderboard)
+
+
+
+@client.command()
+@commands.has_guild_permissions(manage_messages=True)
+async def toggleTextLevel(ctx, onoroff: bool):
+    onoroff = bool(onoroff)
+    with open('levelAllowed.json', 'r') as f:
+        guilds = json.load(f)
+    guilds[str(ctx.guild.id)]['allowed'] = onoroff
     with open('levelAllowed.json', 'w') as f:
         json.dump(guilds,f)
 
@@ -154,12 +305,14 @@ async def guild_info(ctx):
 
 
 @client.command(description="Creates a role with the specified name, color, and perms")
+@commands.has_guild_permissions(manage_roles=True)
 async def create_role(ctx, name, color: discord.Color):
     name = await ctx.guild.create_role(name=name, color=color, mentionable=True)
     await ctx.send(f'The role {name.mention} has been created')
 
 
 @client.command(description="Deletes the specified role")
+@commands.has_guild_permissions(manage_roles=True)
 async def delete_role(ctx, role_name: discord.Role):
     await ctx.guild.delete_role(role_name)
     await ctx.send(f'The role {role_name} has been deleted')
@@ -179,11 +332,13 @@ async def ban(ctx, member: discord.Member, reason1=None):
 
 
 @client.command(description="Locks the specified channel")
+@commands.has_guild_permissions(manage_messages=True)
 async def lock(ctx):
     await ctx.channel.set_permissions(ctx.guild.default_role, send_messages=False)
 
 
 @client.command(description="Unlocks the specified channel")
+@commands.has_guild_permissions(manage_messages=True)
 async def unlock(ctx, channel: discord.TextChannel):
     embed = discord.Embed(title="UNLOCKED!", color=ctx.author.color)
     await channel.send(embed=embed)
@@ -191,35 +346,11 @@ async def unlock(ctx, channel: discord.TextChannel):
 
 
 @client.command(description="Kicks the specified user from the guild")
+@commands.has_guild_permissions(kick_members=True)
 async def kick(ctx, member: discord.Member, reason=None):
     await ctx.guild.kick(member, reason=reason)
     await ctx.send("Kicked " + str(member) + "!")
 
-
-@client.command(description="Saves the above message(warning: saves the message executing the command instead)")
-async def archive(ctx):
-    archived = open("archived.txt", 'a')
-    message_to_archive = ctx.channel.history(limit=1).flatten
-    archived.write(f'\n{message_to_archive}\n')
-    await ctx.send("Archived message: `" + message_to_archive + '`!')
-    archived.close()
-
-
-@client.command(description="Lowers all letters in the message to the lowercase")
-async def to_lower(ctx, message):
-    await ctx.send(message.lower())
-
-
-@client.command(description="Raises all letters in the message to the uppercase")
-async def to_upper(ctx, message):
-    await ctx.send(message.upper())
-
-
-@client.command(description="Shows the list of archives(warning: archives are not currently working)")
-async def archive_list(ctx):
-    archived = open("archived.txt", "r")
-    embed = discord.Embed(title="Archived messages", description=str(archived.read()))
-    await ctx.send(embed=embed)
 
 
 @slash.slash(name="user", guild_ids=guild_ids)
@@ -356,69 +487,78 @@ async def _embedshort(ctx, title, desc='.'):
 
 @client.event
 async def on_message(message):
-    with open('levelAllowed.json', 'r') as f:
-        guilds=json.load(f)
-        contains = await search(guilds, str(message.guild.id))
-        if not contains:
-            with open('levelAllowed.json', 'w') as w:
-                guilds[message.guild.id] = {}
-                guilds[message.guild.id]['allowed'] = True
-                json.dump(guilds, w)
-    if message.author == client.user:
-        return
+    path = r"C:\Users\gigga.PAIGE\PycharmProjects\pythonProject\assets"
+    os.chdir(r'C:\Users\gigga.PAIGE\PycharmProjects\pythonProject\assets')
+    founddir = False
+    if str(message.guild.id) in os.listdir(path):
+        os.chdir(r'C:\Users\gigga.PAIGE\PycharmProjects\pythonProject\assets\{}'.format(message.guild.id))
+        founddir = True
+    if not founddir:
+        os.mkdir(str(message.guild.id))
+        os.chdir(r'C:\Users\gigga.PAIGE\PycharmProjects\pythonProject\assets\{}'.format(message.guild.id))
+        open("usersText.json", "w+")
+        f = open("usersText.json", "w")
+        f.write('{}')
+        f.close()
+        open("levelallowed.txt", "w+")
+        f = open("usersText.json", "w")
+        f.write('True')
+        f.close()
+    if open("levelallowed.txt", 'r').read:
 
-    author = message.author.name
-    content = message.content
-    channel = message.channel
-    server = str(message.guild.name)
+        if message.author == client.user:
+            return
 
-    print(f'''
-    Server: {server}
-        Channel: {channel}
-            Author: {author}
-                Message: {content}
-''')
+        author = message.author.name
+        content = message.content
+        channel = message.channel
+        server = str(message.guild.name)
 
-    if not message.author.bot:
-        await client.process_commands(message)
-        with open('levelAllowed.json', 'r') as f:
-            guilds = json.load(f)
-            if guilds[str(message.guild.id)]["allowed"] == False:
-                return
-        with open('usersText.json', 'r') as f:
-            users = json.load(f)
-            await update_data(users, message.author)
-            await add_exp(users, message.author, 5)
-            await level_up(users, message.author, channel)
+        print(f'''
+        Server: {server}
+            Channel: {channel}
+                Author: {author}
+                    Message: {content}
+    ''')
+
+        if not message.author.bot:
+            await client.process_commands(message)
+            with open('usersText.json', 'r') as f:
+                users = json.load(f)
+                await update_data(users, message.author)
+                await add_exp(users, message.author, 5)
+                await level_up(users, message.author, channel)
+            with open('usersText.json','w') as f:
+                json.dump(users, f)
+
+
+async def update_data(users, user):
+    if not await search(users, str(user.id)):
+        users[str(user.id)] = {}
+        users[str(user.id)]['exp'] = 0
+        users[str(user.id)]['level'] = 1
         with open('usersText.json','w') as f:
             json.dump(users, f)
 
 
-async def update_data(users, user):
-    if str(user.display_name+user.discriminator) not in users:
-        users[str(user.display_name+user.discriminator)] = {}
-        users[str(user.display_name+user.discriminator)]['exp'] = 0
-        users[str(user.display_name+user.discriminator)]['level'] = 1
-
-
 async def add_exp(users, user, exp):
-    users[user.display_name+user.discriminator]['exp'] += exp
+    users[str(user.id)]['exp'] += exp
 
 
 async def level_up(users, user, channel):
-    exp = users[str(user.display_name+user.discriminator)]['exp']
-    lvl_start = users[str(user.display_name+user.discriminator)]['level']
+    exp = users[str(user.id)]['exp']
+    lvl_start = users[str(user.id)]['level']
     lvl_end = int(exp ** (1/4))
 
     if lvl_start < lvl_end:
         await channel.send(f'{user.mention} has leveled up to level {lvl_end}!')
-        users[str(user.display_name+user.discriminator)]['level'] = lvl_end
-    with open('usersText.json','w') as f:
-        json.dump(users, f)
+        users[str(user.id)]['level'] = lvl_end
+
 
 async def search(values, searchFor):
     for k in values:
         if searchFor == k:
             return True
     return False
+
 client.run(token)
